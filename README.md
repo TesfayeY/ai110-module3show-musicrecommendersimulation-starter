@@ -160,38 +160,28 @@ The top result matches what I'd expect: Sunrise City is the only song that match
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
-
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+- **Seven user profiles** (`python -m src.main`): four normal tastes (Default Pop/Happy, High-Energy Pop, Chill Lofi, Deep Intense Rock) and three edge cases (sad but high energy, a genre missing from the catalog, and mood only with no genre). Full output and comparisons are in the [model card](model_card.md#7-evaluation).
+- **Weight Shift** (`python -m src.main --experiment`): halved genre (2.0 → 1.0) and doubled energy (1.0 → 2.0). For pop/happy, Rooftop Lights (happy, right energy) moved above Gym Hero (intense), and for Chill Lofi the ambient chill track passed a "focused" lofi one. Both changes felt more accurate. The Deep Intense Rock list didn't change, and the sad but high-energy user still got a low-energy folk song first, just by a smaller margin.
+- **Edge cases:** a "sad but energy 0.9" user got a quiet sad folk song (energy 0.30) at #1, because two label matches (+3.0) beat a big energy miss. A k-pop fan got zero genre points from anything, and results fell back to mood and energy.
 
 ---
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+- **Tiny, uneven catalog:** 18 songs, and most genres have just one, so a metal or folk fan gets one real match and four filler songs.
+- **High-energy filter bubble:** 8 of 18 songs have energy 0.75 or higher, so the same loud tracks (Gym Hero, Block Party Anthem) fill the leftover spots in most lists.
+- **Genre dominates:** a genre match is worth as much as perfect mood and energy combined.
+- **Exact string matching:** "indie pop" isn't "pop," and "relaxed" isn't "chill."
+- **No understanding of lyrics, language, or real listening behavior:** it only knows the labels in the CSV.
 
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+More detail is in the [model card](model_card.md#6-limitations-and-bias).
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Read the full model card: [**Model Card**](model_card.md)
 
-[**Model Card**](model_card.md)
+Building this showed me that a recommendation is just a score plus a sort. Each song is turned into a number by comparing its features to what the user asked for, and the "prediction" is whatever ends up on top. Real platforms do the same thing at a much bigger scale, with learned weights and other people's behavior (collaborative filtering) instead of my hand-picked +2 / +1 / energy recipe. Even four simple rules produced lists that felt like real playlists, and the "because" reasons made them seem smarter than they are.
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
-
-
+Bias showed up in places I didn't expect. The weights themselves encode a judgment (genre matters twice as much as mood), and the catalog's shape quietly decides who gets good results. Lofi and pop fans had several real matches, while a metal or folk fan got one match and then whatever was loud. Nothing in the code says "prefer high-energy music," but that's what happens when the data is skewed and every song earns energy points. In a real app, the same effect could mean niche genres and smaller artists are rarely recommended, which then means fewer plays, which makes them look even less popular.
