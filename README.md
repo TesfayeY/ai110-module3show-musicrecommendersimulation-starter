@@ -94,6 +94,7 @@ flowchart LR
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+   ```
 
 2. Install dependencies
 
@@ -121,18 +122,39 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
+Output of `python -m src.main` for the default pop/happy profile (the full run also prints the other six profiles):
 
 ```
-# e.g.:
-# User profile: genre=indie, mood=chill, energy=low
-# Recommendations:
-#   1. ...
-#   2. ...
-#   3. ...
+Loaded songs: 18
+
+Weights: {'genre': 2.0, 'mood': 1.0, 'energy': 1.0, 'acoustic': 0.5}
+
+============================================================
+Profile: Default Pop/Happy
+Prefs:   genre=pop, mood=happy, energy=0.8
+------------------------------------------------------------
+1. Sunrise City by Neon Echo (pop, happy)
+   Score: 3.98
+   - genre match (+2.0)
+   - mood match (+1.0)
+   - energy 0.82 vs target 0.80 (+0.98)
+2. Gym Hero by Max Pulse (pop, intense)
+   Score: 2.87
+   - genre match (+2.0)
+   - energy 0.93 vs target 0.80 (+0.87)
+3. Rooftop Lights by Indigo Parade (indie pop, happy)
+   Score: 1.96
+   - mood match (+1.0)
+   - energy 0.76 vs target 0.80 (+0.96)
+4. Block Party Anthem by MC Lumen (hip hop, energetic)
+   Score: 0.96
+   - energy 0.84 vs target 0.80 (+0.96)
+5. Night Drive Loop by Neon Echo (synthwave, moody)
+   Score: 0.95
+   - energy 0.75 vs target 0.80 (+0.95)
 ```
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
+The top result matches what I'd expect: Sunrise City is the only song that matches pop, happy, and the target energy. Gym Hero ranks second on genre and energy alone, even though it's an intense workout track, not a happy one.
 
 ---
 
