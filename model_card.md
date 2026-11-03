@@ -27,6 +27,8 @@ Every song gets a score, and the highest scores win.
 
 The program scores all 18 songs this way, sorts them from highest to lowest, and shows the top 5 with a list of reasons, such as "genre match (+2.0)," so you can see why each song is there.
 
+**Extras (optional):** users can also ask for a release decade, detailed mood tags (like "nostalgic" or "driving"), a popularity level, instrumental or vocal music, and live or studio sound, each worth a small number of extra points. There are four scoring modes that change how much genre, mood, and energy count (balanced, genre-first, mood-first, energy-focused), and an optional diversity rule that takes points away from a song if its artist or genre is already in the list.
+
 **Changes from the starter:** the starter code returned no songs at all. I implemented CSV loading, the scoring rule, the ranking, the reasons, and the class-based `Recommender`. I also added an acoustic preference (using the `likes_acoustic` field the starter `UserProfile` already had) and a way to swap the weights for experiments.
 
 ---
@@ -34,12 +36,12 @@ The program scores all 18 songs this way, sorts them from highest to lowest, and
 ## 4. Data  
 
 - **18 songs**: the 10 from the starter plus 8 I added.
-- **Features:** genre, mood, energy (0–1), tempo, valence, danceability, acousticness. Only genre, mood, energy, and acousticness are used for scoring.
+- **Features:** genre, mood, energy (0–1), tempo, valence, danceability, acousticness, plus five I added: popularity (0–100), release decade, three detailed mood tags per song, instrumentalness, and liveness. Genre, mood, energy, and acousticness drive the main score. The five new features only count when a user asks for them. Tempo, valence, and danceability aren't scored.
 - **15 genres:** lofi (3), pop (2), and one song each for indie pop, rock, ambient, jazz, synthwave, metal, country, r&b, edm, classical, hip hop, reggae, and folk.
 - **13 moods:** chill (3), happy (2), intense (2), relaxed (2), and one each for moody, focused, angry, nostalgic, romantic, euphoric, melancholy, energetic, and sad.
 - **What I added:** metal/angry, country/nostalgic, r&b/romantic, edm/euphoric, classical/melancholy, hip hop/energetic, reggae/relaxed, and folk/sad, so the catalog covers sad and aggressive music, not just happy and chill.
 
-**What's missing:** lyrics, language, artist popularity, release year, and any listening history. Energy has a gap: 8 songs are 0.75 or higher, 5 are below 0.40, and **no songs are between 0.55 and 0.75**. Most genres have only one song, so the catalog is very thin for anyone who isn't into lofi or pop.
+**What's missing:** lyrics, language, and any listening history. The popularity and decade numbers are invented for this simulation, not real chart data. Energy has a gap: 8 songs are 0.75 or higher, 5 are below 0.40, and **no songs are between 0.55 and 0.75**. Most genres have only one song, so the catalog is very thin for anyone who isn't into lofi or pop.
 
 ---
 
@@ -294,7 +296,7 @@ Gym Hero is labeled pop, so it gets the same 2-point genre bonus as the happiest
 
 ### Experiment: Weight Shift (energy ×2, genre ×½)
 
-I changed the weights to genre +1.0 and energy up to +2.0 (`python -m src.main --experiment`). The math stays valid: energy is always between 0 and 1, so the gap is too, and the top possible score is still 4.5 (1 + 1 + 2 + 0.5).
+I changed the weights to genre +1.0 and energy up to +2.0 (`python -m src.main --experiment`). The math stays valid: energy is always between 0 and 1, so the gap is too, and the top possible score for these profiles is still 4.5 (1 + 1 + 2 + 0.5). This mode is now also available as `--mode energy-focused`.
 
 | Profile | Baseline top 5 | Experiment top 5 |
 |---|---|---|
@@ -307,14 +309,14 @@ I changed the weights to genre +1.0 and energy up to +2.0 (`python -m src.main -
 
 ### Tests
 
-`pytest` runs 6 automated checks: the two starter tests (the pop/happy song ranks first and explanations aren't empty), plus checks that the CSV numbers load as numbers, that a perfect match scores 4.0, that closer energy scores higher, and that results come back sorted.
+`pytest` runs 10 automated checks: the two starter tests (the pop/happy song ranks first and explanations aren't empty), plus checks that the CSV numbers load as numbers, that a perfect match scores 4.0, that closer energy scores higher, that results come back sorted, that the advanced features parse and add the right points, that the scoring modes reorder results, and that the diversity rule limits repeat artists.
 
 ---
 
 ## 8. Future Work  
 
 1. **Partial credit for similar genres and moods.** Treat "indie pop" as close to "pop" and "relaxed" as close to "chill," instead of all-or-nothing matching.
-2. **A diversity rule.** Penalize a song if its artist or genre is already in the top results, so lists don't fill up with the same loud songs.
+2. **Diversity by feel, not just by label.** I added an artist and genre diversity penalty (`--diverse`), but it didn't break up the high-energy filter bubble, because those loud songs are all different artists and genres. A next step would be penalizing songs whose *energy and mood* are too close to songs already picked. It also sometimes swapped in a less relevant song (a sad folk track in a chill lofi list), so the penalty size needs tuning.
 3. **More data and more features.** Add enough songs that every genre has several options, fill the 0.55–0.75 energy gap, and score valence so "happy" vs. "sad" uses the music itself, not just a label.
 
 ---

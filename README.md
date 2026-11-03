@@ -40,7 +40,7 @@ I left out **tempo_bpm**, because it overlaps heavily with energy and is on a di
 
 ### Objects
 
-- `Song`: `id`, `title`, `artist`, `genre`, `mood`, `energy`, `tempo_bpm`, `valence`, `danceability`, `acousticness`
+- `Song`: `id`, `title`, `artist`, `genre`, `mood`, `energy`, `tempo_bpm`, `valence`, `danceability`, `acousticness`, plus the advanced features `popularity`, `release_decade`, `mood_tags`, `instrumentalness`, `liveness` (see [Optional Extensions](#optional-extensions))
 - `UserProfile`: `favorite_genre`, `favorite_mood`, `target_energy`, `likes_acoustic`
 
 The functional API in `main.py` uses the same profile as a dictionary:
@@ -105,12 +105,19 @@ pip install -r requirements.txt
 3. Run the app:
 
 ```bash
-python -m src.main
+python -m src.main                     # balanced mode, the seven test profiles
+python -m src.main --experiment        # Phase 4 weight shift (same as --mode energy-focused)
+python -m src.main --mode mood-first   # balanced | genre-first | mood-first | energy-focused
+python -m src.main --diverse           # penalize repeated artists and genres
+python -m src.main --table             # ASCII table output
+python -m src.main --advanced          # profiles that use the advanced song features
 ```
+
+Flags can be combined, for example `python -m src.main --advanced --diverse --table`.
 
 ### Running Tests
 
-Run the starter tests with:
+Run the tests (10 checks covering loading, scoring, ranking, modes, and diversity) with:
 
 ```bash
 pytest
@@ -127,7 +134,8 @@ Output of `python -m src.main` for the default pop/happy profile (the full run a
 ```
 Loaded songs: 18
 
-Weights: {'genre': 2.0, 'mood': 1.0, 'energy': 1.0, 'acoustic': 0.5}
+Mode: balanced (genre first, then mood, then energy)
+Diversity penalty: off
 
 ============================================================
 Profile: Default Pop/Happy
@@ -155,6 +163,196 @@ Prefs:   genre=pop, mood=happy, energy=0.8
 ```
 
 The top result matches what I'd expect: Sunrise City is the only song that matches pop, happy, and the target energy. Gym Hero ranks second on genre and energy alone, even though it's an intense workout track, not a happy one.
+
+---
+
+## Optional Extensions
+
+### Challenge 1: Advanced song features
+
+`data/songs.csv` has five new columns, and `score_song` scores each one only when the user sets the matching preference. That way, the seven basic profiles score exactly as before.
+
+| Column | Values | User preference | Points |
+|---|---|---|---|
+| `popularity` | 0–100 | `popularity`: target 0–100 | up to +0.5, closer is better (same rule as energy) |
+| `release_decade` | 1950–2020 | `decade`: e.g. `1980` | +0.5 same decade, +0.25 one decade off |
+| `mood_tags` | 3 detailed tags, e.g. `nostalgic\|nocturnal\|driving` | `mood_tags`: list of tags | +0.25 per shared tag (max 3) |
+| `instrumentalness` | 0–1 | `instrumental`: True/False | up to +0.5 |
+| `liveness` | 0–1 | `likes_live`: True/False | up to +0.25 |
+
+`python -m src.main --advanced`:
+
+```
+============================================================
+Profile: Late-Night Study
+Prefs:   genre=lofi, mood=focused, energy=0.4, mood_tags=['calm', 'nocturnal'], instrumental=True, likes_live=False
+------------------------------------------------------------
+1. Focus Flow by LoRoom (lofi, focused)
+   Score: 4.93
+   - genre match (+2.0)
+   - mood match (+1.0)
+   - energy 0.40 vs target 0.40 (+1.00)
+   - mood tags calm (+0.25)
+   - instrumental preference (+0.45)
+   - studio sound preference (+0.23)
+2. Midnight Coding by LoRoom (lofi, chill)
+   Score: 4.15
+   - genre match (+2.0)
+   - energy 0.42 vs target 0.40 (+0.98)
+   - mood tags calm, nocturnal (+0.50)
+   - instrumental preference (+0.44)
+   - studio sound preference (+0.23)
+3. Library Rain by Paper Lanterns (lofi, chill)
+   Score: 3.90
+   - genre match (+2.0)
+   - energy 0.35 vs target 0.40 (+0.95)
+   - mood tags calm (+0.25)
+   - instrumental preference (+0.46)
+   - studio sound preference (+0.23)
+4. Spacewalk Thoughts by Orbit Bloom (ambient, chill)
+   Score: 1.84
+   - energy 0.28 vs target 0.40 (+0.88)
+   - mood tags calm (+0.25)
+   - instrumental preference (+0.47)
+   - studio sound preference (+0.24)
+5. Rainy Window Sonata by Elm Street Quartet (classical, melancholy)
+   Score: 1.52
+   - energy 0.20 vs target 0.40 (+0.80)
+   - instrumental preference (+0.49)
+   - studio sound preference (+0.23)
+
+============================================================
+Profile: Throwback Road Trip
+Prefs:   mood=nostalgic, energy=0.6, decade=1980, mood_tags=['nostalgic', 'driving', 'warm'], popularity=60
+------------------------------------------------------------
+1. Porch Light Letters by Willow Creek (country, nostalgic)
+   Score: 2.90
+   - mood match (+1.0)
+   - energy 0.52 vs target 0.60 (+0.92)
+   - mood tags nostalgic, warm (+0.50)
+   - popularity 63 vs target 60 (+0.48)
+2. Night Drive Loop by Neon Echo (synthwave, moody)
+   Score: 2.35
+   - energy 0.75 vs target 0.60 (+0.85)
+   - 1980s release (+0.50)
+   - mood tags nostalgic, driving (+0.50)
+   - popularity 61 vs target 60 (+0.49)
+3. Island Time by Coral Sound System (reggae, relaxed)
+   Score: 1.88
+   - energy 0.50 vs target 0.60 (+0.90)
+   - 1970s release (+0.25)
+   - mood tags warm (+0.25)
+   - popularity 57 vs target 60 (+0.48)
+4. Velvet Hours by Amber Vale (r&b, romantic)
+   Score: 1.87
+   - energy 0.55 vs target 0.60 (+0.95)
+   - 1990s release (+0.25)
+   - mood tags warm (+0.25)
+   - popularity 76 vs target 60 (+0.42)
+5. Coffee Shop Stories by Slow Stereo (jazz, relaxed)
+   Score: 1.68
+   - energy 0.37 vs target 0.60 (+0.77)
+   - mood tags warm, nostalgic (+0.50)
+   - popularity 41 vs target 60 (+0.41)
+
+============================================================
+Profile: Underground Headbanger
+Prefs:   genre=metal, mood=angry, energy=0.95, mood_tags=['aggressive', 'rebellious'], popularity=30, instrumental=False, likes_live=True
+------------------------------------------------------------
+1. Iron Verdict by Black Anvil (metal, angry)
+   Score: 5.43
+   - genre match (+2.0)
+   - mood match (+1.0)
+   - energy 0.97 vs target 0.95 (+0.98)
+   - mood tags aggressive, rebellious (+0.50)
+   - popularity 45 vs target 30 (+0.42)
+   - vocals preference (+0.42)
+   - live sound preference (+0.10)
+2. Storm Runner by Voltline (rock, intense)
+   Score: 2.29
+   - energy 0.91 vs target 0.95 (+0.96)
+   - mood tags aggressive, rebellious (+0.50)
+   - popularity 67 vs target 30 (+0.32)
+   - vocals preference (+0.45)
+   - live sound preference (+0.06)
+3. Gym Hero by Max Pulse (pop, intense)
+   Score: 1.98
+   - energy 0.93 vs target 0.95 (+0.98)
+   - mood tags aggressive (+0.25)
+   - popularity 88 vs target 30 (+0.21)
+   - vocals preference (+0.49)
+   - live sound preference (+0.04)
+4. Block Party Anthem by MC Lumen (hip hop, energetic)
+   Score: 1.78
+   - energy 0.84 vs target 0.95 (+0.89)
+   - popularity 79 vs target 30 (+0.26)
+   - vocals preference (+0.50)
+   - live sound preference (+0.14)
+5. Rooftop Lights by Indigo Parade (indie pop, happy)
+   Score: 1.66
+   - energy 0.76 vs target 0.95 (+0.81)
+   - popularity 70 vs target 30 (+0.30)
+   - vocals preference (+0.47)
+   - live sound preference (+0.07)
+```
+
+The tags and decade did real work. For Throwback Road Trip, Night Drive Loop (synthwave, *moody*) still placed second with no mood match, because it's the only 1980s song and shares two tags. Detailed tags give partial credit where the single `mood` label is all-or-nothing.
+
+### Challenge 2: Multiple scoring modes
+
+Each mode is a `ScoringMode` object (Strategy pattern) with its own weights, and `recommend_songs` calls `mode.score(...)` without knowing which mode it has. Pick a mode with `--mode`.
+
+| Mode | Genre | Mood | Energy | Default Pop/Happy, #2–#3 | Chill Lofi, #3–#4 |
+|---|---|---|---|---|---|
+| `balanced` | 2.0 | 1.0 | 1.0 | Gym Hero, Rooftop Lights | Focus Flow, Spacewalk Thoughts |
+| `genre-first` | 3.0 | 0.5 | 0.5 | Gym Hero, Rooftop Lights (gap grows: 3.44 vs 0.98) | Focus Flow, Spacewalk Thoughts |
+| `mood-first` | 0.5 | 2.0 | 1.0 | **Rooftop Lights, Gym Hero** | **Spacewalk Thoughts, Focus Flow** |
+| `energy-focused` | 1.0 | 1.0 | 2.0 | **Rooftop Lights, Gym Hero** | **Spacewalk Thoughts, Focus Flow** |
+
+The #1 song never changes for these profiles, because it matches everything. The modes only reorder the "partial matches," which is where the weights express a real opinion about what matters more.
+
+### Challenge 3: Diversity penalty
+
+`--diverse` builds the top 5 one pick at a time. Each candidate loses **1.0 per song by the same artist** and **0.5 per song in the same genre** already picked, and the penalty shows up in the reasons.
+
+| Profile | Without `--diverse` | With `--diverse` |
+|---|---|---|
+| Default Pop/Happy | …, Block Party Anthem, Night Drive Loop | …, Block Party Anthem, **Storm Runner** (Night Drive Loop is a second Neon Echo song) |
+| Chill Lofi | Library Rain, Midnight Coding, Focus Flow, Spacewalk Thoughts, Coffee Shop Stories | Library Rain, Midnight Coding, Spacewalk Thoughts, Coffee Shop Stories, **Empty Highway** (Focus Flow is a second LoRoom song and a third lofi song) |
+| Mood Only (no genre) | Midnight Coding, Library Rain, Spacewalk Thoughts, … | Midnight Coding, **Spacewalk Thoughts**, Library Rain, … |
+| Conflicted (sad but high energy) | unchanged | unchanged |
+
+**Trade-off:** variety isn't free. For Chill Lofi, the penalty swaps a focused lofi track for a *sad folk* song, which is less relevant. It also doesn't fix the high-energy filter bubble, because those loud songs are all different artists and genres. Diversity by artist and genre is not the same as diversity by feel.
+
+### Challenge 4: Table output
+
+`python -m src.main --table --diverse` (first profile):
+
+```
+============================================================
+Profile: Default Pop/Happy
+Prefs:   genre=pop, mood=happy, energy=0.8
+------------------------------------------------------------
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+| # | Title              | Artist        | Genre / Mood        | Score | Reasons                                    |
++===+====================+===============+=====================+=======+============================================+
+| 1 | Sunrise City       | Neon Echo     | pop / happy         | 3.98  | genre match (+2.0)                         |
+|   |                    |               |                     |       | mood match (+1.0)                          |
+|   |                    |               |                     |       | energy 0.82 vs target 0.80 (+0.98)         |
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+| 2 | Gym Hero           | Max Pulse     | pop / intense       | 2.37  | genre match (+2.0)                         |
+|   |                    |               |                     |       | energy 0.93 vs target 0.80 (+0.87)         |
+|   |                    |               |                     |       | diversity penalty: genre x1 already picked |
+|   |                    |               |                     |       |   (-0.50)                                  |
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+| 3 | Rooftop Lights     | Indigo Parade | indie pop / happy   | 1.96  | mood match (+1.0)                          |
+|   |                    |               |                     |       | energy 0.76 vs target 0.80 (+0.96)         |
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+| 4 | Block Party Anthem | MC Lumen      | hip hop / energetic | 0.96  | energy 0.84 vs target 0.80 (+0.96)         |
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+| 5 | Storm Runner       | Voltline      | rock / intense      | 0.89  | energy 0.91 vs target 0.80 (+0.89)         |
++---+--------------------+---------------+---------------------+-------+--------------------------------------------+
+```
 
 ---
 
