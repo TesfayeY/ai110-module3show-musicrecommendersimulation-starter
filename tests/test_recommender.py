@@ -1,4 +1,4 @@
-from src.recommender import Song, UserProfile, Recommender, load_songs, score_song, recommend_songs
+from src.recommender import Song, UserProfile, Recommender, SCORING_MODES, load_songs, score_song, recommend_songs
 
 def make_small_recommender() -> Recommender:
     songs = [
@@ -94,3 +94,41 @@ def test_recommend_songs_returns_top_k_sorted():
     scores = [score for _, score, _ in results]
     assert scores == sorted(scores, reverse=True)
     assert results[0][0]["genre"] == "lofi"
+
+
+def test_load_songs_parses_advanced_features():
+    song = load_songs("data/songs.csv")[0]
+    assert isinstance(song["popularity"], int)
+    assert isinstance(song["release_decade"], int)
+    assert isinstance(song["instrumentalness"], float)
+    assert song["mood_tags"] == ["euphoric", "sunny", "carefree"]
+
+
+def test_score_song_advanced_preferences_add_points():
+    song = load_songs("data/songs.csv")[7]  # Night Drive Loop, 1980s, nostalgic|nocturnal|driving
+    basic, _ = score_song({"energy": 0.75}, song)
+    advanced, reasons = score_song({"energy": 0.75, "decade": 1980, "mood_tags": ["nostalgic", "driving"]}, song)
+
+    assert advanced == basic + 0.5 + 0.5
+    assert "1980s release (+0.50)" in reasons
+
+
+def test_scoring_modes_change_rankings():
+    songs = load_songs("data/songs.csv")
+    prefs = {"genre": "pop", "mood": "happy", "energy": 0.8}
+    genre_first = [s["title"] for s, _, _ in recommend_songs(prefs, songs, 3, SCORING_MODES["genre-first"])]
+    mood_first = [s["title"] for s, _, _ in recommend_songs(prefs, songs, 3, SCORING_MODES["mood-first"])]
+
+    assert genre_first[1] == "Gym Hero"  # pop but intense
+    assert mood_first[1] == "Rooftop Lights"  # happy but indie pop
+
+
+def test_diversity_penalty_limits_repeat_artists():
+    songs = load_songs("data/songs.csv")
+    prefs = {"genre": "lofi", "mood": "chill", "energy": 0.35, "likes_acoustic": True}
+    plain = recommend_songs(prefs, songs, 5)
+    diverse = recommend_songs(prefs, songs, 5, diverse=True)
+
+    assert sum(s["artist"] == "LoRoom" for s, _, _ in plain) == 2
+    assert sum(s["artist"] == "LoRoom" for s, _, _ in diverse) == 1
+    assert "diversity penalty" in diverse[1][2]
